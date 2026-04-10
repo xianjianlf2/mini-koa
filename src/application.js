@@ -32,18 +32,9 @@ class Application {
     const fn = this.compose(this.middlewares);
 
     return Promise.resolve(fn(ctx))
-      .then(() => {
-        if (!res.writableEnded) {
-          this.respond(ctx);
-        }
-      })
+      .then(() => this.respond(ctx))
       .catch((error) => {
-        console.error(error);
-        if (!res.writableEnded) {
-          res.statusCode = 500;
-          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-          res.end('server error');
-        }
+        this.handleError(error, ctx);
       });
   }
 
@@ -55,11 +46,27 @@ class Application {
     ctx.app = request.app = response.app = this;
     ctx.req = request.req = req;
     ctx.res = response.res = res;
+    ctx.state = {};
     request.ctx = response.ctx = ctx;
     request.response = response;
     response.request = request;
+    response._body = null;
+    response._status = null;
 
     return ctx;
+  }
+
+  handleError(error, ctx) {
+    console.error(error);
+
+    if (ctx.res.writableEnded) {
+      return;
+    }
+
+    ctx.status = error.status || 500;
+    ctx.res.statusCode = ctx.status;
+    ctx.res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    ctx.res.end(`server error: ${error.message}`);
   }
 
   respond(ctx) {
@@ -67,15 +74,22 @@ class Application {
     const body = ctx.body;
 
     if (body == null) {
-      res.statusCode = 404;
+      res.statusCode = ctx.status || 404;
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.end('default response: ctx.body 还没有被赋值。');
+      res.end(`default response: ${ctx.method} ${ctx.url} 暂时没有返回内容。`);
       return;
     }
 
-    res.statusCode = 200;
+    res.statusCode = ctx.status || 200;
+
+    if (typeof body === 'object') {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify(body, null, 2));
+      return;
+    }
+
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.end(body);
+    res.end(String(body));
   }
 
   compose(middlewares) {
