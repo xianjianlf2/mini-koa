@@ -6,6 +6,8 @@ const response = require('./response');
 class Application {
   constructor() {
     this.middlewares = [];
+    // These three prototypes act like templates.
+    // Each incoming request will create fresh ctx/request/response objects from them.
     this.context = Object.create(context);
     this.request = Object.create(request);
     this.response = Object.create(response);
@@ -43,10 +45,15 @@ class Application {
     const request = (ctx.request = Object.create(this.request));
     const response = (ctx.response = Object.create(this.response));
 
+    // Bind the raw Node objects onto our wrapper objects.
+    // That is why request.js can read this.req.url and this.req.method.
     ctx.app = request.app = response.app = this;
     ctx.req = request.req = req;
     ctx.res = response.res = res;
     ctx.state = {};
+
+    // Link the wrappers back to each other so ctx/request/response
+    // can proxy properties across the whole chain.
     request.ctx = response.ctx = ctx;
     request.response = response;
     response.request = request;

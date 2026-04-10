@@ -1,4 +1,6 @@
 const context = {
+  // ctx is the top-level entry used by middleware.
+  // It forwards request-side data to ctx.request, and response-side data to ctx.response.
   get url() {
     return this.request.url;
   },
