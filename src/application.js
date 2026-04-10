@@ -1,7 +1,10 @@
 const http = require('http');
+const { Readable } = require('stream');
 const context = require('./context');
 const request = require('./request');
 const response = require('./response');
+
+const EMPTY_STATUS_CODES = new Set([204, 205, 304]);
 
 class Application {
   constructor() {
@@ -79,28 +82,58 @@ class Application {
   respond(ctx) {
     const { res } = ctx;
     const body = ctx.body;
+    const status = ctx.status || 404;
+
+    if (EMPTY_STATUS_CODES.has(status)) {
+      ctx.remove('Content-Type');
+      ctx.remove('Content-Length');
+      res.statusCode = status;
+      res.end();
+      return;
+    }
 
     if (body == null) {
-      res.statusCode = ctx.status || 404;
+      res.statusCode = status;
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.end(`default response: ${ctx.method} ${ctx.url} 暂时没有返回内容。`);
       return;
     }
 
-    res.statusCode = ctx.status || 200;
+    res.statusCode = status === 404 ? 200 : status;
+
+    if (Buffer.isBuffer(body)) {
+      if (!ctx.type) {
+        ctx.type = 'application/octet-stream';
+      }
+      res.setHeader('Content-Length', body.length);
+      res.end(body);
+      return;
+    }
+
+    if (body instanceof Readable) {
+      if (!ctx.type) {
+        ctx.type = 'application/octet-stream';
+      }
+      body.pipe(res);
+      return;
+    }
 
     if (typeof body === 'object') {
       if (!ctx.type) {
         ctx.type = 'application/json; charset=utf-8';
       }
-      res.end(JSON.stringify(body, null, 2));
+      const json = JSON.stringify(body, null, 2);
+      res.setHeader('Content-Length', Buffer.byteLength(json));
+      res.end(json);
       return;
     }
 
     if (!ctx.type) {
       ctx.type = 'text/plain; charset=utf-8';
     }
-    res.end(String(body));
+    const text = String(body);
+    res.setHeader('Content-Length', Buffer.byteLength(text));
+    res.end(text);
   }
 
   compose(middlewares) {

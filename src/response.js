@@ -5,6 +5,14 @@ const response = {
 
   set body(value) {
     this._body = value;
+
+    if (value == null) {
+      return;
+    }
+
+    if (this._status == null) {
+      this._status = 200;
+    }
   },
 
   get status() {
@@ -25,6 +33,10 @@ const response = {
 
   set(field, value) {
     this.res.setHeader(field, value);
+  },
+
+  remove(field) {
+    this.res.removeHeader(field);
   }
 };
 

@@ -1,4 +1,5 @@
 const Application = require('./src/application');
+const { Readable } = require('stream');
 
 const app = new Application();
 const port = 3000;
@@ -14,7 +15,7 @@ app.use(async (ctx, next) => {
 
     if (ctx.state.view === 'text') {
       ctx.type = 'text/plain; charset=utf-8';
-      ctx.body = `step7 ok: ${ctx.state.message}
+      ctx.body = `step8 ok: ${ctx.state.message}
 method: ${ctx.method}
 url: ${ctx.url}
 path: ${ctx.path}
@@ -25,7 +26,7 @@ trace: ${ctx.state.trace.join(' -> ')}`;
 
     if (ctx.state.view === 'json') {
       ctx.body = {
-        step: 'step7',
+        step: 'step8',
         method: ctx.method,
         url: ctx.url,
         path: ctx.path,
@@ -35,10 +36,29 @@ trace: ${ctx.state.trace.join(' -> ')}`;
         trace: ctx.state.trace
       };
     }
+
+    if (ctx.state.view === 'buffer') {
+      ctx.type = 'application/octet-stream';
+      ctx.body = Buffer.from(`step8 buffer body\npath: ${ctx.path}\ntrace: ${ctx.state.trace.join(' -> ')}\n`);
+    }
+
+    if (ctx.state.view === 'stream') {
+      ctx.type = 'text/plain; charset=utf-8';
+      ctx.body = Readable.from([
+        'step8 stream body\n',
+        `path: ${ctx.path}\n`,
+        `trace: ${ctx.state.trace.join(' -> ')}\n`
+      ]);
+    }
+
+    if (ctx.state.view === 'empty') {
+      ctx.status = 204;
+      ctx.body = null;
+    }
   } catch (error) {
     ctx.state.trace.push('outer: catch');
     ctx.status = error.status || 500;
-    ctx.body = `step7 error handled.
+    ctx.body = `step8 error handled.
 status: ${ctx.status}
 message: ${error.message}
 trace: ${ctx.state.trace.join(' -> ')}`;
@@ -57,7 +77,7 @@ app.use(async (ctx) => {
 
   if (ctx.path === '/') {
     ctx.state.view = 'text';
-    ctx.state.message = '现在 ctx 已经能更自然地代理请求和返回信息。';
+    ctx.state.message = '现在不仅能方便地读请求信息，还能按不同返回类型做更稳的收尾。';
     return;
   }
 
@@ -74,6 +94,21 @@ app.use(async (ctx) => {
     return;
   }
 
+  if (ctx.path === '/buffer') {
+    ctx.state.view = 'buffer';
+    return;
+  }
+
+  if (ctx.path === '/stream') {
+    ctx.state.view = 'stream';
+    return;
+  }
+
+  if (ctx.path === '/empty') {
+    ctx.state.view = 'empty';
+    return;
+  }
+
   if (ctx.path === '/slow') {
     await new Promise((resolve) => setTimeout(resolve, 80));
     ctx.state.view = 'text';
@@ -87,5 +122,5 @@ app.use(async (ctx) => {
 });
 
 app.listen(port, () => {
-  console.log(`step7 server is running at http://127.0.0.1:${port}`);
+  console.log(`step8 server is running at http://127.0.0.1:${port}`);
 });

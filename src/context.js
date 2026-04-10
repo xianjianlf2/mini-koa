@@ -58,6 +58,11 @@ const context = {
     return this;
   },
 
+  remove(field) {
+    this.response.remove(field);
+    return this;
+  },
+
   throw(status, message) {
     const error = new Error(message);
     error.status = status;
