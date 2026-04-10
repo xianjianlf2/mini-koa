@@ -3,45 +3,52 @@ const Application = require('./src/application');
 const app = new Application();
 const port = 3000;
 
-app.use(async (req, res, next) => {
-  req.steps = ['1 start'];
+app.use(async (ctx, next) => {
+  ctx.trace = ['1 start'];
   await next();
-  req.steps.push('1 end');
-
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.end(`step4 ok: 这是一个最直观的洋葱模型例子。
-
-执行顺序:
-${req.steps.join(' -> ')}
-
-逐行展开:
-${req.steps.join('\n')}`);
+  ctx.trace.push('1 end');
+  ctx.body = `step5 ok: 现在中间件拿到的是统一的 ctx 对象。
+method: ${ctx.method}
+url: ${ctx.url}
+trace: ${ctx.trace.join(' -> ')}
+page: ${ctx.page}`;
 });
 
-app.use(async (req, res, next) => {
-  req.steps.push('2 start');
+app.use(async (ctx, next) => {
+  ctx.trace.push('2 start');
   await next();
-  req.steps.push('2 end');
+  ctx.trace.push('2 end');
 });
 
-app.use(async (req, res, next) => {
-  req.steps.push('3 start');
+app.use(async (ctx, next) => {
+  ctx.trace.push('3 start');
   await next();
-  req.steps.push('3 end');
+  ctx.trace.push('3 end');
 });
 
-app.use(async (req, res, next) => {
-  req.steps.push('4 start');
+app.use(async (ctx, next) => {
+  ctx.trace.push('4 start');
   await next();
-  req.steps.push('4 end');
+  ctx.trace.push('4 end');
 });
 
-app.use(async (req) => {
-  req.steps.push('5');
-  req.steps.push(`route: ${req.url}`);
+app.use(async (ctx) => {
+  ctx.trace.push('5');
+  ctx.trace.push(`route: ${ctx.url}`);
+
+  if (ctx.url === '/') {
+    ctx.page = 'home';
+    return;
+  }
+
+  if (ctx.url === '/about') {
+    ctx.page = 'about';
+    return;
+  }
+
+  ctx.page = 'not-found-yet';
 });
 
 app.listen(port, () => {
-  console.log(`step4 server is running at http://127.0.0.1:${port}`);
+  console.log(`step5 server is running at http://127.0.0.1:${port}`);
 });

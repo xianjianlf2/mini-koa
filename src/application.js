@@ -1,8 +1,14 @@
 const http = require('http');
+const context = require('./context');
+const request = require('./request');
+const response = require('./response');
 
 class Application {
   constructor() {
     this.middlewares = [];
+    this.context = Object.create(context);
+    this.request = Object.create(request);
+    this.response = Object.create(response);
   }
 
   use(fn) {
@@ -22,14 +28,13 @@ class Application {
   handleRequest(req, res) {
     console.log(`[app] ${req.method} ${req.url}`);
 
+    const ctx = this.createContext(req, res);
     const fn = this.compose(this.middlewares);
 
-    return Promise.resolve(fn(req, res))
+    return Promise.resolve(fn(ctx))
       .then(() => {
         if (!res.writableEnded) {
-          res.statusCode = 404;
-          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-          res.end('default response: 这一轮中间件没有真正返回内容。');
+          this.respond(ctx);
         }
       })
       .catch((error) => {
@@ -42,8 +47,39 @@ class Application {
       });
   }
 
+  createContext(req, res) {
+    const ctx = Object.create(this.context);
+    const request = (ctx.request = Object.create(this.request));
+    const response = (ctx.response = Object.create(this.response));
+
+    ctx.app = request.app = response.app = this;
+    ctx.req = request.req = req;
+    ctx.res = response.res = res;
+    request.ctx = response.ctx = ctx;
+    request.response = response;
+    response.request = request;
+
+    return ctx;
+  }
+
+  respond(ctx) {
+    const { res } = ctx;
+    const body = ctx.body;
+
+    if (body == null) {
+      res.statusCode = 404;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.end('default response: ctx.body 还没有被赋值。');
+      return;
+    }
+
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.end(body);
+  }
+
   compose(middlewares) {
-    return function run(req, res) {
+    return function run(ctx) {
       let index = -1;
 
       function dispatch(i) {
@@ -58,7 +94,7 @@ class Application {
           return Promise.resolve();
         }
 
-        return Promise.resolve(fn(req, res, () => dispatch(i + 1)));
+        return Promise.resolve(fn(ctx, () => dispatch(i + 1)));
       }
 
       return dispatch(0);
