@@ -90,12 +90,16 @@ class Application {
     res.statusCode = ctx.status || 200;
 
     if (typeof body === 'object') {
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      if (!ctx.type) {
+        ctx.type = 'application/json; charset=utf-8';
+      }
       res.end(JSON.stringify(body, null, 2));
       return;
     }
 
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    if (!ctx.type) {
+      ctx.type = 'text/plain; charset=utf-8';
+    }
     res.end(String(body));
   }
 

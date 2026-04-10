@@ -9,6 +9,22 @@ const context = {
     return this.request.method;
   },
 
+  get path() {
+    return this.request.path;
+  },
+
+  get querystring() {
+    return this.request.querystring;
+  },
+
+  get query() {
+    return this.request.query;
+  },
+
+  get header() {
+    return this.request.header;
+  },
+
   get body() {
     return this.response.body;
   },
@@ -23,6 +39,23 @@ const context = {
 
   set status(value) {
     this.response.status = value;
+  },
+
+  get type() {
+    return this.response.type;
+  },
+
+  set type(value) {
+    this.response.type = value;
+  },
+
+  get(field) {
+    return this.request.get(field);
+  },
+
+  set(field, value) {
+    this.response.set(field, value);
+    return this;
   },
 
   throw(status, message) {
