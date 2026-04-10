@@ -1,0 +1,9 @@
+{
+  "name": "mini-koa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Learn mini-koa step by step through git history.",
+  "scripts": {
+    "start": "node ./index.js"
+  }
+}
