@@ -1,7 +1,9 @@
 const Application = require('./src/application');
+const Router = require('./src/router');
 const { Readable } = require('stream');
 
 const app = new Application();
+const router = new Router();
 const port = 3000;
 
 app.use(async (ctx, next) => {
@@ -15,38 +17,38 @@ app.use(async (ctx, next) => {
 
     if (ctx.state.view === 'text') {
       ctx.type = 'text/plain; charset=utf-8';
-      ctx.body = `step8 ok: ${ctx.state.message}
+      ctx.body = `step9 ok: ${ctx.state.message}
 method: ${ctx.method}
 url: ${ctx.url}
 path: ${ctx.path}
-querystring: ${ctx.querystring || '(empty)'}
+route: ${ctx.state.route}
 host: ${ctx.get('host') || '(none)'}
 trace: ${ctx.state.trace.join(' -> ')}`;
     }
 
     if (ctx.state.view === 'json') {
       ctx.body = {
-        step: 'step8',
+        step: 'step9',
+        route: ctx.state.route,
         method: ctx.method,
-        url: ctx.url,
         path: ctx.path,
-        querystring: ctx.querystring,
+        params: ctx.params,
         query: ctx.query,
-        host: ctx.get('host'),
-        trace: ctx.state.trace
+        trace: ctx.state.trace,
+        ...ctx.state.payload
       };
     }
 
     if (ctx.state.view === 'buffer') {
       ctx.type = 'application/octet-stream';
-      ctx.body = Buffer.from(`step8 buffer body\npath: ${ctx.path}\ntrace: ${ctx.state.trace.join(' -> ')}\n`);
+      ctx.body = Buffer.from(`step9 buffer body\nroute: ${ctx.state.route}\ntrace: ${ctx.state.trace.join(' -> ')}\n`);
     }
 
     if (ctx.state.view === 'stream') {
       ctx.type = 'text/plain; charset=utf-8';
       ctx.body = Readable.from([
-        'step8 stream body\n',
-        `path: ${ctx.path}\n`,
+        'step9 stream body\n',
+        `route: ${ctx.state.route}\n`,
         `trace: ${ctx.state.trace.join(' -> ')}\n`
       ]);
     }
@@ -58,7 +60,7 @@ trace: ${ctx.state.trace.join(' -> ')}`;
   } catch (error) {
     ctx.state.trace.push('outer: catch');
     ctx.status = error.status || 500;
-    ctx.body = `step8 error handled.
+    ctx.body = `step9 error handled.
 status: ${ctx.status}
 message: ${error.message}
 trace: ${ctx.state.trace.join(' -> ')}`;
@@ -72,55 +74,56 @@ app.use(async (ctx, next) => {
   ctx.state.trace.push('async middleware: after wait');
 });
 
-app.use(async (ctx) => {
-  ctx.state.trace.push(`route: ${ctx.path}`);
-
-  if (ctx.path === '/') {
-    ctx.state.view = 'text';
-    ctx.state.message = '现在不仅能方便地读请求信息，还能按不同返回类型做更稳的收尾。';
-    return;
-  }
-
-  if (ctx.path === '/query') {
-    ctx.state.view = 'json';
-    return;
-  }
-
-  if (ctx.path === '/headers') {
-    ctx.set('X-Mini-Koa', 'step7');
-    ctx.type = 'text/plain; charset=utf-8';
-    ctx.state.view = 'text';
-    ctx.state.message = '这里演示了自定义响应头和响应类型。';
-    return;
-  }
-
-  if (ctx.path === '/buffer') {
-    ctx.state.view = 'buffer';
-    return;
-  }
-
-  if (ctx.path === '/stream') {
-    ctx.state.view = 'stream';
-    return;
-  }
-
-  if (ctx.path === '/empty') {
-    ctx.state.view = 'empty';
-    return;
-  }
-
-  if (ctx.path === '/slow') {
-    await new Promise((resolve) => setTimeout(resolve, 80));
-    ctx.state.view = 'text';
-    ctx.state.message = '这是异步返回，而且依然能通过 ctx.path 和 ctx.query 取信息。';
-    return;
-  }
-
-  if (ctx.path === '/error') {
-    ctx.throw(500, '你访问了 /error，这里故意抛出了一个错误。');
-  }
+router.get('/', async (ctx) => {
+  ctx.state.view = 'text';
+  ctx.state.message = '现在请求已经能先交给路由，再分发到具体处理函数。';
 });
 
+router.get('/articles/:id', async (ctx) => {
+  ctx.state.view = 'json';
+  ctx.state.payload = {
+    id: ctx.params.id
+  };
+});
+
+router.get('/headers', async (ctx) => {
+  ctx.set('X-Mini-Koa', 'step9');
+  ctx.state.view = 'text';
+  ctx.state.message = '这里演示了路由层里设置响应头。';
+});
+
+router.get('/buffer', async (ctx) => {
+  ctx.state.view = 'buffer';
+});
+
+router.get('/stream', async (ctx) => {
+  ctx.state.view = 'stream';
+});
+
+router.get('/empty', async (ctx) => {
+  ctx.state.view = 'empty';
+});
+
+router.get('/slow', async (ctx) => {
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  ctx.state.view = 'text';
+  ctx.state.message = `这是路由层里的异步处理。query: ${JSON.stringify(ctx.query)}`;
+});
+
+router.get('/error', async (ctx) => {
+  ctx.throw(500, '你访问了 /error，这里故意抛出了一个错误。');
+});
+
+router.post('/submit', async (ctx) => {
+  ctx.status = 201;
+  ctx.state.view = 'json';
+  ctx.state.payload = {
+    message: '这里演示了按请求方法分发。'
+  };
+});
+
+app.use(router.routes());
+
 app.listen(port, () => {
-  console.log(`step8 server is running at http://127.0.0.1:${port}`);
+  console.log(`step9 server is running at http://127.0.0.1:${port}`);
 });

@@ -54,6 +54,7 @@ class Application {
     ctx.req = request.req = req;
     ctx.res = response.res = res;
     ctx.state = {};
+    ctx.params = {};
 
     // Link the wrappers back to each other so ctx/request/response
     // can proxy properties across the whole chain.
