@@ -4,6 +4,7 @@
   "private": true,
   "description": "Learn mini-koa step by step through git history.",
   "scripts": {
-    "start": "node ./index.js"
+    "start": "node ./index.js",
+    "test": "node --test"
   }
 }

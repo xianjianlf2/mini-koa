@@ -100,7 +100,10 @@ class Application {
       return;
     }
 
-    res.statusCode = status === 404 ? 200 : status;
+    // The `set body` setter already promotes a still-unset status to 200,
+    // so here we just honor whatever status is in effect — including an
+    // explicit 404 served together with a body (e.g. a custom not-found page).
+    res.statusCode = status;
 
     if (Buffer.isBuffer(body)) {
       if (!ctx.type) {
